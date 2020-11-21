@@ -1,5 +1,5 @@
 [package]
-name = "RoguelikeRust"
+name = "Roguelike_rust"
 version = "0.1.0"
 authors = ["Shaun McManus <shaun.mcmanus@gmail.com>"]
 edition = "2018"
@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 rltk = { version = "0.8.0" }
+specs = "0.16.1"
+specs-derive = "0.4.1"
