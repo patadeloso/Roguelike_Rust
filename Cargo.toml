@@ -1,5 +1,5 @@
 [package]
-name = "Roguelike_rust"
+name = "RoguelikeRust"
 version = "0.1.0"
 authors = ["Shaun McManus <shaun.mcmanus@gmail.com>"]
 edition = "2018"
