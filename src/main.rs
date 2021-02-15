@@ -28,6 +28,7 @@ mod inventory_system;
 mod spawner;
 use inventory_system::*;
 pub mod saveload_system;
+pub mod random_table;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
@@ -240,57 +241,57 @@ impl GameState for State {
 
 impl State {
     fn entities_to_remove_on_level_change(&mut self) -> Vec<Entity> {
-    let entities = self.ecs.entities();
-    let player = self.ecs.read_storage::<Player>();
-    let backpack = self.ecs.read_storage::<InBackpack>();
-    let player_entity = self.ecs.fetch::<Entity>();
+        let entities = self.ecs.entities();
+        let player = self.ecs.read_storage::<Player>();
+        let backpack = self.ecs.read_storage::<InBackpack>();
+        let player_entity = self.ecs.fetch::<Entity>();
 
-    let mut to_delete : Vec<Entity> = Vec::new();
-    for entity in entities.join() {
-        let mut should_delete = true;
+        let mut to_delete : Vec<Entity> = Vec::new();
+        for entity in entities.join() {
+            let mut should_delete = true;
 
-        // Don't delete player
-        let p = player.get(entity);
-        if let Some(_p) = p {
-            should_delete = false;
-            }
-
-        // Don't delete InBackpack
-        let bp = backpack.get(entity);
-        if let Some(bp) = bp {
-            if bp.owner == *player_entity {
+            // Don't delete player
+            let p = player.get(entity);
+            if let Some(_p) = p {
                 should_delete = false;
                 }
-            }
 
-        if should_delete {
-            to_delete.push(entity);
+            // Don't delete InBackpack
+            let bp = backpack.get(entity);
+            if let Some(bp) = bp {
+                if bp.owner == *player_entity {
+                    should_delete = false;
+                    }
+                }
+
+            if should_delete {
+                to_delete.push(entity);
+                }
             }
+            to_delete
         }
-        to_delete
-    }
 
     fn goto_next_level(&mut self) {
         // Delete entites that are not the player or in their backpack
         let to_delete = self.entities_to_remove_on_level_change();
         for target in to_delete {
             self.ecs.delete_entity(target).expect("Unable to delete entity");
-
         }
 
-        // Build a new map
-        let worldmap;
-        {
-            let mut worldmap_resource = self.ecs.write_resource::<Map>();
-            let current_depth = worldmap_resource.depth;
-            *worldmap_resource = Map::new_map_rooms_and_corridors(current_depth + 1);
-            worldmap = worldmap_resource.clone();
-        }
+        // Build a new map and place the player
+      let worldmap;
+      let current_depth;
+      {
+          let mut worldmap_resource = self.ecs.write_resource::<Map>();
+          current_depth = worldmap_resource.depth;
+          *worldmap_resource = Map::new_map_rooms_and_corridors(current_depth + 1);
+          worldmap = worldmap_resource.clone();
+      }
 
-        // Spawn bad guys
-        for room in worldmap.rooms.iter().skip(1) {
-            spawner::spawn_room(&mut self.ecs, room);
-        }
+      // Spawn bad guys
+      for room in worldmap.rooms.iter().skip(1) {
+          spawner::spawn_room(&mut self.ecs, room, current_depth+1);
+      }
 
         // Place the player and update resources
         let (player_x, player_y) = worldmap.rooms[0].center();
@@ -365,7 +366,7 @@ fn main() -> rltk::BError {
     gs.ecs.insert(rltk::RandomNumberGenerator::new());
 
     for room in map.rooms.iter().skip(1) {
-        spawner::spawn_room(&mut gs.ecs, room);
+        spawner::spawn_room(&mut gs.ecs, room, 1);
     }
 
     gs.ecs.insert(map);
