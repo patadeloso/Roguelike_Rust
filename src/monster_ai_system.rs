@@ -1,4 +1,4 @@
-use super::{Map, Monster, Position, RunState, Viewshed, WantsToMelee, Confusion};
+use super::{Confusion, Map, Monster, ParticleBuilder, Position, RunState, Viewshed, WantsToMelee};
 use rltk::Point;
 use specs::prelude::*;
 
@@ -17,6 +17,7 @@ impl<'a> System<'a> for MonsterAI {
         WriteStorage<'a, Position>,
         WriteStorage<'a, WantsToMelee>,
         WriteStorage<'a, Confusion>,
+        WriteExpect<'a, ParticleBuilder>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -31,6 +32,7 @@ impl<'a> System<'a> for MonsterAI {
             mut position,
             mut wants_to_melee,
             mut confused,
+            mut particle_builder,
         ) = data;
 
         if *runstate != RunState::MonsterTurn {
@@ -49,6 +51,15 @@ impl<'a> System<'a> for MonsterAI {
                     confused.remove(entity);
                 }
                 can_act = false;
+
+                particle_builder.request(
+                    pos.x,
+                    pos.y,
+                    rltk::RGB::named(rltk::MAGENTA),
+                    rltk::RGB::named(rltk::BLACK),
+                    rltk::to_cp437('?'),
+                    200.0,
+                );
             }
 
             if can_act {
@@ -70,16 +81,16 @@ impl<'a> System<'a> for MonsterAI {
                         &mut *map,
                     );
 
-                if path.success && path.steps.len() > 1 {
-                    let mut idx = map.xy_idx(pos.x, pos.y);
-                    map.blocked[idx] = false;
-                    pos.x = path.steps[1] as i32 % map.width;
-                    pos.y = path.steps[1] as i32 / map.width;
-                    idx = map.xy_idx(pos.x, pos.y);
-                    map.blocked[idx] = true;
-                    viewshed.dirty = true;
+                    if path.success && path.steps.len() > 1 {
+                        let mut idx = map.xy_idx(pos.x, pos.y);
+                        map.blocked[idx] = false;
+                        pos.x = path.steps[1] as i32 % map.width;
+                        pos.y = path.steps[1] as i32 / map.width;
+                        idx = map.xy_idx(pos.x, pos.y);
+                        map.blocked[idx] = true;
+                        viewshed.dirty = true;
+                    }
                 }
-            }
             }
         }
     }

@@ -1,7 +1,7 @@
 use super::{
-    gamelog::GameLog, AreaOfEffect, CombatStats, Confusion, Consumable, InBackpack, InflictsDamage,
-    Map, Name, Position, ProvidesHealing, SufferDamage, WantsToDropItem, WantsToPickupItem,
-    WantsToUseItem, Equipped, Equippable
+    gamelog::GameLog, particle_system::ParticleBuilder, AreaOfEffect, CombatStats, Confusion,
+    Consumable, Equippable, Equipped, InBackpack, InflictsDamage, Map, Name, Position,
+    ProvidesHealing, SufferDamage, WantsToDropItem, WantsToPickupItem, WantsToUseItem,
 };
 use specs::prelude::*;
 
@@ -65,7 +65,9 @@ impl<'a> System<'a> for ItemUseSystem {
         WriteStorage<'a, Confusion>,
         ReadStorage<'a, Equippable>,
         WriteStorage<'a, Equipped>,
-        WriteStorage<'a, InBackpack>
+        WriteStorage<'a, InBackpack>,
+        WriteExpect<'a, ParticleBuilder>,
+        ReadStorage<'a, Position>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -85,14 +87,16 @@ impl<'a> System<'a> for ItemUseSystem {
             mut confused,
             equippable,
             mut equipped,
-            mut backpack
+            mut backpack,
+            mut particle_builder,
+            positions,
         ) = data;
 
         for (entity, useitem) in (&entities, &wants_use).join() {
             let mut used_item = true;
 
             // Targeting
-            let mut targets : Vec<Entity> = Vec::new();
+            let mut targets: Vec<Entity> = Vec::new();
             match useitem.target {
                 None => {
                     targets.push(*player_entity);
@@ -117,6 +121,7 @@ impl<'a> System<'a> for ItemUseSystem {
                                 for mob in map.tile_content[idx].iter() {
                                     targets.push(*mob);
                                 }
+                            particle_builder.request(tile_idx.x, tile_idx.y, rltk::RGB::named(rltk::ORANGE), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('░'), 200.0);
                             }
                         }
                     }
@@ -132,9 +137,12 @@ impl<'a> System<'a> for ItemUseSystem {
                     let target = targets[0];
 
                     // Remove any items the target has in the item's target_slot
-                    let mut to_unequip : Vec<Entity> = Vec::new();
-                    for (item_entity, already_equipped, name) in (&entities, &equipped, &names).join() {
-                        if already_equipped.owner == target && already_equipped.slot == target_slot {
+                    let mut to_unequip: Vec<Entity> = Vec::new();
+                    for (item_entity, already_equipped, name) in
+                        (&entities, &equipped, &names).join()
+                    {
+                        if already_equipped.owner == target && already_equipped.slot == target_slot
+                        {
                             to_unequip.push(item_entity);
                             if target == *player_entity {
                                 gamelog.entries.push(format!("You unequip {}.", name.name));
@@ -143,14 +151,27 @@ impl<'a> System<'a> for ItemUseSystem {
                     }
                     for item in to_unequip.iter() {
                         equipped.remove(*item);
-                        backpack.insert(*item, InBackpack{ owner: target }).expect("Unable to insert backpack entry");
+                        backpack
+                            .insert(*item, InBackpack { owner: target })
+                            .expect("Unable to insert backpack entry");
                     }
 
                     // Wield the item
-                    equipped.insert(useitem.item, Equipped{ owner: target, slot: target_slot}).expect("Unable to insert equipped component");
+                    equipped
+                        .insert(
+                            useitem.item,
+                            Equipped {
+                                owner: target,
+                                slot: target_slot,
+                            },
+                        )
+                        .expect("Unable to insert equipped component");
                     backpack.remove(useitem.item);
                     if target == *player_entity {
-                        gamelog.entries.push(format!("You equip {}.", names.get(useitem.item).unwrap().name));
+                        gamelog.entries.push(format!(
+                            "You equip {}.",
+                            names.get(useitem.item).unwrap().name
+                        ));
                     }
                 }
             }
@@ -172,6 +193,18 @@ impl<'a> System<'a> for ItemUseSystem {
                                 ));
                             }
                             used_item = true;
+
+                            let pos = positions.get(*target);
+                            if let Some(pos) = pos {
+                                particle_builder.request(
+                                    pos.x,
+                                    pos.y,
+                                    rltk::RGB::named(rltk::GREEN),
+                                    rltk::RGB::named(rltk::BLACK),
+                                    rltk::to_cp437('♥'),
+                                    200.0,
+                                );
+                            }
                         }
                     }
                 }
@@ -191,6 +224,18 @@ impl<'a> System<'a> for ItemUseSystem {
                                 "You use {} on {}, inflecting {} hp.",
                                 item_name.name, mob_name.name, damage.damage
                             ));
+
+                            let pos = positions.get(*mob);
+                            if let Some(pos) = pos {
+                                particle_builder.request(
+                                    pos.x,
+                                    pos.y,
+                                    rltk::RGB::named(rltk::RED),
+                                    rltk::RGB::named(rltk::BLACK),
+                                    rltk::to_cp437('‼'),
+                                    200.0,
+                                );
+                            }
                         }
                         used_item = true;
                     }
@@ -213,6 +258,18 @@ impl<'a> System<'a> for ItemUseSystem {
                                     "You use {} on {}, confusing them.",
                                     item_name.name, mob_name.name
                                 ));
+
+                                let pos = positions.get(*mob);
+                                if let Some(pos) = pos {
+                                    particle_builder.request(
+                                        pos.x,
+                                        pos.y,
+                                        rltk::RGB::named(rltk::MAGENTA),
+                                        rltk::RGB::named(rltk::BLACK),
+                                        rltk::to_cp437('?'),
+                                        200.0,
+                                    );
+                                }
                             }
                         }
                     }
@@ -300,15 +357,17 @@ impl<'a> System<'a> for ItemRemoveSystem {
         Entities<'a>,
         WriteStorage<'a, WantsToDropItem>,
         WriteStorage<'a, Equipped>,
-        WriteStorage<'a, InBackpack>
+        WriteStorage<'a, InBackpack>,
     );
 
-    fn run(&mut self, data : Self::SystemData) {
+    fn run(&mut self, data: Self::SystemData) {
         let (entities, mut wants_remove, mut equipped, mut backpack) = data;
 
         for (entity, to_remove) in (&entities, &wants_remove).join() {
             equipped.remove(to_remove.item);
-            backpack.insert(to_remove.item, InBackpack{ owner: entity }).expect("Unable to insert backpack");
+            backpack
+                .insert(to_remove.item, InBackpack { owner: entity })
+                .expect("Unable to insert backpack");
         }
 
         wants_remove.clear();

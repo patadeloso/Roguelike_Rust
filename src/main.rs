@@ -29,6 +29,8 @@ mod spawner;
 use inventory_system::*;
 pub mod random_table;
 pub mod saveload_system;
+pub mod particle_system;
+use particle_system::*;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
@@ -75,6 +77,8 @@ impl State {
         drop_items.run_now(&self.ecs);
         let mut item_remove = ItemRemoveSystem {};
         item_remove.run_now(&self.ecs);
+        let mut particles = particle_system::ParticleSpawnSystem{};
+        particles.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -89,6 +93,7 @@ impl GameState for State {
         }
 
         ctx.cls();
+        particle_system::cull_dead_particles(&mut self.ecs, ctx);
 
         match newrunstate {
             RunState::MainMenu { .. } => {}
@@ -453,6 +458,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Equipped>();
     gs.ecs.register::<MeleePowerBonus>();
     gs.ecs.register::<DefenseBonus>();
+    gs.ecs.register::<ParticleLifetime>();
 
     gs.ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
 
@@ -462,6 +468,7 @@ fn main() -> rltk::BError {
     let player_entity = spawner::player(&mut gs.ecs, player_x, player_y);
 
     gs.ecs.insert(rltk::RandomNumberGenerator::new());
+    gs.ecs.insert(particle_system::ParticleBuilder::new());
 
     for room in map.rooms.iter().skip(1) {
         spawner::spawn_room(&mut gs.ecs, room, 1);
