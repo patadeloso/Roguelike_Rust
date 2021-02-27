@@ -121,7 +121,14 @@ impl<'a> System<'a> for ItemUseSystem {
                                 for mob in map.tile_content[idx].iter() {
                                     targets.push(*mob);
                                 }
-                            particle_builder.request(tile_idx.x, tile_idx.y, rltk::RGB::named(rltk::ORANGE), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('░'), 200.0);
+                                particle_builder.request(
+                                    tile_idx.x,
+                                    tile_idx.y,
+                                    rltk::RGB::named(rltk::ORANGE),
+                                    rltk::RGB::named(rltk::BLACK),
+                                    rltk::to_cp437('░'),
+                                    200.0,
+                                );
                             }
                         }
                     }
