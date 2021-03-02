@@ -1,7 +1,7 @@
-#![allow(unsused_variables)]
 use super::{
-    gamelog::GameLog, CombatStats, DefenseBonus, Entities, Equipped, MeleePowerBonus, Name,
-    SufferDamage, WantsToMelee, particle_system::ParticleBuilder, Position
+    gamelog::GameLog, particle_system::ParticleBuilder, CombatStats, DefenseBonus, Entities,
+    Equipped, HungerClock, HungerState, MeleePowerBonus, Name, Position, SufferDamage,
+    WantsToMelee,
 };
 //use rltk::console;
 use specs::prelude::*;
@@ -21,7 +21,8 @@ impl<'a> System<'a> for MeleeCombatSystem {
         ReadStorage<'a, DefenseBonus>,
         ReadStorage<'a, Equipped>,
         WriteExpect<'a, ParticleBuilder>,
-        ReadStorage<'a, Position>
+        ReadStorage<'a, Position>,
+        ReadStorage<'a, HungerClock>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -36,7 +37,8 @@ impl<'a> System<'a> for MeleeCombatSystem {
             defense_bonuses,
             equipped,
             mut particle_builder,
-            positions
+            positions,
+            hunger_clock,
         ) = data;
 
         for (entity, wants_melee, name, stats) in
@@ -49,6 +51,13 @@ impl<'a> System<'a> for MeleeCombatSystem {
                 {
                     if equipped_by.owner == entity {
                         offensive_bonus += power_bonus.power;
+                    }
+                }
+
+                let hc = hunger_clock.get(entity);
+                if let Some(hc) = hc {
+                    if hc.state == HungerState::WellFed {
+                        offensive_bonus += 1;
                     }
                 }
 
@@ -68,10 +77,20 @@ impl<'a> System<'a> for MeleeCombatSystem {
 
                     let pos = positions.get(wants_melee.target);
                     if let Some(pos) = pos {
-                        particle_builder.request(pos.x, pos.y, rltk::RGB::named(rltk::ORANGE), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('!'), 200.0);
+                        particle_builder.request(
+                            pos.x,
+                            pos.y,
+                            rltk::RGB::named(rltk::ORANGE),
+                            rltk::RGB::named(rltk::BLACK),
+                            rltk::to_cp437('!'),
+                            200.0,
+                        );
                     }
 
-                    let damage = i32::max(0, stats.power - target_stats.defense);
+                    let damage = i32::max(
+                        0,
+                        (stats.power + offensive_bonus) - (target_stats.defense + defensive_bonus),
+                    );
 
                     if damage == 0 {
                         log.entries.push(format!(

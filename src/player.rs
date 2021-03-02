@@ -1,6 +1,6 @@
 use super::{
     gamelog::GameLog, CombatStats, Item, Map, Player, Position, RunState, State, Viewshed,
-    WantsToMelee, WantsToPickupItem, TileType, Monster
+    WantsToMelee, WantsToPickupItem, TileType, Monster, HungerClock, HungerState
 };
 use rltk::{Point, Rltk, VirtualKeyCode};
 use specs::prelude::*;
@@ -8,7 +8,7 @@ use std::cmp::{max, min};
 
 pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let mut positions = ecs.write_storage::<Position>();
-    let mut players = ecs.write_storage::<Player>();
+    let players = ecs.write_storage::<Player>();
     let mut viewsheds = ecs.write_storage::<Viewshed>();
     let entities = ecs.entities();
     let combat_stats = ecs.read_storage::<CombatStats>();
@@ -120,6 +120,17 @@ fn skip_turn(ecs: &mut World) -> RunState {
             }
         }
     }
+
+    let hunger_clocks = ecs.read_storage::<HungerClock>();
+    let hc = hunger_clocks.get(*player_entity);
+    if let Some(hc) = hc {
+        match hc.state {
+            HungerState::Hungry => can_heal = false,
+            HungerState::Starving => can_heal = false,
+            _ => {}
+            }
+    }
+
 
     if can_heal {
         let mut health_components = ecs.write_storage::<CombatStats>();

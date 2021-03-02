@@ -2,7 +2,7 @@
 
 use specs::prelude::*;
 use super::{CombatStats, SufferDamage, Player, Name, gamelog::GameLog, RunState, Position, Map};
-use rltk::console;
+//use rltk::console;
 
 pub struct DamageSystem {}
 

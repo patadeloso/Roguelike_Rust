@@ -1,4 +1,4 @@
-use super::{Confusion, Map, Monster, ParticleBuilder, Position, RunState, Viewshed, WantsToMelee};
+use super::{Confusion, Map, Monster, particle_system::ParticleBuilder, Position, RunState, Viewshed, WantsToMelee};
 use rltk::Point;
 use specs::prelude::*;
 
