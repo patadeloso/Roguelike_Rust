@@ -90,7 +90,8 @@ pub fn save_game(ecs: &mut World) {
             DefenseBonus,
             WantsToRemoveItem,
             ParticleLifetime,
-            HungerClock
+            HungerClock,
+            MagicMapper
         );
     }
 
@@ -156,7 +157,8 @@ pub fn load_game(ecs: &mut World) {
             DefenseBonus,
             WantsToRemoveItem,
             ParticleLifetime,
-            HungerClock
+            HungerClock,
+            MagicMapper
         );
     }
 
