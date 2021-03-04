@@ -31,6 +31,7 @@ pub mod random_table;
 pub mod saveload_system;
 pub mod particle_system;
 pub mod hunger_system;
+pub mod rex_assets;
 
 
 #[derive(PartialEq, Copy, Clone)]
@@ -466,7 +467,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Consumable>();
     gs.ecs.register::<InBackpack>();
     gs.ecs.register::<WantsToPickupItem>();
-    //gs.ecs.register::<WantsToDrinkPotion>();
+    gs.ecs.register::<WantsToRemoveItem>();
     gs.ecs.register::<WantsToDropItem>();
     gs.ecs.register::<Confusion>();
     gs.ecs.register::<AreaOfEffect>();
@@ -505,6 +506,7 @@ fn main() -> rltk::BError {
     gs.ecs.insert(gamelog::GameLog {
         entries: vec!["Welcome to Rusty Roguelike".to_string()],
     });
+    gs.ecs.insert(rex_assets::RexAssets::new());
 
     rltk::main_loop(context, gs)
 }
