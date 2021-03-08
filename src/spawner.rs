@@ -1,8 +1,9 @@
 use super::{
     map::MAPWIDTH, random_table::RandomTable, AreaOfEffect, BlocksTile, CombatStats, Confusion,
-    Consumable, DefenseBonus, EquipmentSlot, Equippable, InflictsDamage, Item, MeleePowerBonus,
-    Monster, Name, Player, Position, ProvidesHealing, Ranged, Rect, Renderable, SerializeMe,
-    Viewshed, HungerClock, HungerState, ProvidesFood, MagicMapper
+    Consumable, DefenseBonus, EntryTrigger, EquipmentSlot, Equippable, Hidden, HungerClock,
+    HungerState, InflictsDamage, Item, MagicMapper, MeleePowerBonus, Monster, Name, Player,
+    Position, ProvidesFood, ProvidesHealing, Ranged, Rect, Renderable, SerializeMe,
+    SingleActivation, Viewshed,
 };
 use rltk::{RandomNumberGenerator, RGB};
 use specs::prelude::*;
@@ -52,10 +53,11 @@ pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
             "Magic Missile Scroll" => magic_missile_scroll(ecs, x, y),
             "Dagger" => dagger(ecs, x, y),
             "Shield" => shield(ecs, x, y),
-            "Longsword" =>longsword(ecs, x, y),
+            "Longsword" => longsword(ecs, x, y),
             "Tower Shield" => tower_shield(ecs, x, y),
             "Rations" => rations(ecs, x, y),
             "Magic Mapping Scroll" => magic_mapping_scroll(ecs, x, y),
+            "Bear Trap" => bear_trap(ecs, x, y),
             _ => {}
         }
     }
@@ -88,7 +90,10 @@ pub fn player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
             defense: 2,
             power: 5,
         })
-        .with(HungerClock{ state: HungerState::WellFed, duration: 20 })
+        .with(HungerClock {
+            state: HungerState::WellFed,
+            duration: 20,
+        })
         .marked::<SimpleMarker<SerializeMe>>()
         .build()
 }
@@ -253,68 +258,100 @@ fn shield(ecs: &mut World, x: i32, y: i32) {
 
 fn longsword(ecs: &mut World, x: i32, y: i32) {
     ecs.create_entity()
-        .with(Position{ x, y })
-        .with(Renderable{
+        .with(Position { x, y })
+        .with(Renderable {
             glyph: rltk::to_cp437('/'),
             fg: RGB::named(rltk::YELLOW),
             bg: RGB::named(rltk::BLACK),
-            render_order: 2
+            render_order: 2,
         })
-        .with(Name{ name: "longsword".to_string() })
-        .with(Item{})
-        .with(Equippable{ slot: EquipmentSlot::Melee })
-        .with(MeleePowerBonus{ power: 4 })
+        .with(Name {
+            name: "longsword".to_string(),
+        })
+        .with(Item {})
+        .with(Equippable {
+            slot: EquipmentSlot::Melee,
+        })
+        .with(MeleePowerBonus { power: 4 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
 fn tower_shield(ecs: &mut World, x: i32, y: i32) {
     ecs.create_entity()
-        .with(Position{ x, y })
-        .with(Renderable{
+        .with(Position { x, y })
+        .with(Renderable {
             glyph: rltk::to_cp437('('),
             fg: RGB::named(rltk::YELLOW),
             bg: RGB::named(rltk::BLACK),
-            render_order: 2
+            render_order: 2,
         })
-        .with(Name{ name: "Tower Shield".to_string() })
-        .with(Item{})
-        .with(Equippable{ slot: EquipmentSlot::Shield })
-        .with(DefenseBonus{ defense: 3 })
+        .with(Name {
+            name: "Tower Shield".to_string(),
+        })
+        .with(Item {})
+        .with(Equippable {
+            slot: EquipmentSlot::Shield,
+        })
+        .with(DefenseBonus { defense: 3 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
 fn rations(ecs: &mut World, x: i32, y: i32) {
     ecs.create_entity()
-        .with(Position{ x, y})
-        .with(Renderable{
+        .with(Position { x, y })
+        .with(Renderable {
             glyph: rltk::to_cp437('%'),
             fg: RGB::named(rltk::GREEN),
             bg: RGB::named(rltk::BLACK),
-            render_order: 2
+            render_order: 2,
         })
-        .with(Name{ name: "Rations".to_string() })
-        .with(Item{})
-        .with(ProvidesFood{})
-        .with(Consumable{})
+        .with(Name {
+            name: "Rations".to_string(),
+        })
+        .with(Item {})
+        .with(ProvidesFood {})
+        .with(Consumable {})
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
 fn magic_mapping_scroll(ecs: &mut World, x: i32, y: i32) {
     ecs.create_entity()
-        .with(Position{ x, y })
-        .with(Renderable{
+        .with(Position { x, y })
+        .with(Renderable {
             glyph: rltk::to_cp437(')'),
             fg: RGB::named(rltk::CYAN3),
             bg: RGB::named(rltk::BLACK),
-            render_order: 2
+            render_order: 2,
         })
-        .with(Name{ name : "Scroll of Magic Mapping".to_string() })
-        .with(Item{})
-        .with(MagicMapper{})
-        .with(Consumable{})
+        .with(Name {
+            name: "Scroll of Magic Mapping".to_string(),
+        })
+        .with(Item {})
+        .with(MagicMapper {})
+        .with(Consumable {})
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+fn bear_trap(ecs: &mut World, x: i32, y: i32) {
+    ecs.create_entity()
+        .with(Position { x, y })
+        .with(Renderable {
+            glyph: rltk::to_cp437('^'),
+            fg: RGB::named(rltk::RED),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name {
+            name: "Bear Trap".to_string(),
+        })
+        .with(Hidden {})
+        .with(EntryTrigger {})
+        .with(InflictsDamage { damage: 6 })
+        .with(SingleActivation {})
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
@@ -333,4 +370,5 @@ fn room_table(map_depth: i32) -> RandomTable {
         .add("Tower Shield", map_depth - 1)
         .add("Rations", 10)
         .add("Magic Mapping Scroll", 2)
+        .add("Bear Trap", 2)
 }
